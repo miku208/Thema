@@ -1,88 +1,72 @@
 #!/bin/bash
 
 if (( $EUID != 0 )); then
-    echo "Please run as root"
+    echo "❌ Harap jalankan sebagai root!"
     exit
 fi
 
 clear
+PANEL_DIR="/var/www/pterodactyl"
+BACKUP_NAME="Pterodactyl_Nightcore_Themebackup.tar.gz"
+CUSTOM_BG_URL="https://github.com/miku208/Img/blob/main/IMG-20250626-WA0197.jpg?raw=true"
 
 installTheme(){
+    echo "📦 Membuat backup..."
     cd /var/www/
-    tar -cvf Pterodactyl_Nightcore_Themebackup.tar.gz pterodactyl
-    echo "Installing theme..."
-    cd /var/www/pterodactyl
-    rm -r Pterodactyl_Nightcore_Theme
+    tar -cvf $BACKUP_NAME pterodactyl
+
+    echo "🚧 Menginstal tema Nightcore..."
+    cd $PANEL_DIR
+    rm -rf Pterodactyl_Nightcore_Theme
     git clone https://github.com/NoPro200/Pterodactyl_Nightcore_Theme.git
     cd Pterodactyl_Nightcore_Theme
-    rm /var/www/pterodactyl/resources/scripts/Pterodactyl_Nightcore_Theme.css
-    rm /var/www/pterodactyl/resources/scripts/index.tsx
-    mv index.tsx /var/www/pterodactyl/resources/scripts/index.tsx
-    mv Pterodactyl_Nightcore_Theme.css /var/www/pterodactyl/resources/scripts/Pterodactyl_Nightcore_Theme.css
-    cd /var/www/pterodactyl
 
-    curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    apt update
+    echo "🧹 Menghapus file lama..."
+    rm -f $PANEL_DIR/resources/scripts/Pterodactyl_Nightcore_Theme.css
+    rm -f $PANEL_DIR/resources/scripts/index.tsx
+
+    echo "📁 Menyalin file tema baru..."
+    cp index.tsx $PANEL_DIR/resources/scripts/index.tsx
+    cp Pterodactyl_Nightcore_Theme.css $PANEL_DIR/resources/scripts/Pterodactyl_Nightcore_Theme.css
+
+    echo "🎨 Mengganti background dengan foto kamu..."
+    sed -i "s|background-image: url([^)]*);|background-image: url('$CUSTOM_BG_URL');|g" $PANEL_DIR/resources/scripts/Pterodactyl_Nightcore_Theme.css
+
+    echo "🔧 Setup nodejs..."
+    curl -sL https://deb.nodesource.com/setup_18.x | bash -
+    apt update -y
     apt install -y nodejs
 
-    npm i -g yarn
-    yarn
-
-    cd /var/www/pterodactyl
+    echo "⚙️ Build ulang tema..."
+    cd $PANEL_DIR
+    yarn install
     yarn build:production
-    sudo php artisan optimize:clear
+    php artisan optimize:clear
 
-
+    echo "✅ Tema Nightcore berhasil dipasang dengan background kustom!"
 }
 
-installThemeQuestion(){
-    while true; do
-        read -p "Are you sure that you want to install the theme [y/n]? " yn
-        case $yn in
-            [Yy]* ) installTheme; break;;
-            [Nn]* ) exit;;
-            * ) echo "Please answer yes or no.";;
-        esac
-    done
-}
-
-repair(){
-    bash <(curl https://raw.githubusercontent.com/NoPro200/Pterodactyl_Nightcore_Theme/main/repair.sh)
-}
-
-restoreBackUp(){
-    echo "Restoring backup..."
+restoreBackup(){
+    echo "♻️ Memulihkan dari backup..."
     cd /var/www/
-    tar -xvf Pterodactyl_Nightcore_Themebackup.tar.gz
-    rm Pterodactyl_Nightcore_Themebackup.tar.gz
-
-    cd /var/www/pterodactyl
+    tar -xvf $BACKUP_NAME
+    rm -f $BACKUP_NAME
+    cd $PANEL_DIR
     yarn build:production
-    sudo php artisan optimize:clear
+    php artisan optimize:clear
 }
-echo "Copyright (c) 2024 Angelillo15 and NoPro200"
-echo "This program is free software: you can redistribute it and/or modify"
-echo ""
-echo ""
-echo "[1] Install theme"
-echo "[2] Restore backup"
-echo "[3] Repair panel (use if you have an error in the theme installation)"
-echo "[4] Exit"
 
-read -p "Please enter a number: " choice
-if [ $choice == "1" ]
-    then
-    installThemeQuestion
-fi
-if [ $choice == "2" ]
-    then
-    restoreBackUp
-fi
-if [ $choice == "3" ]
-    then
-    repair
-fi
-if [ $choice == "4" ]
-    then
-    exit
-fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━"
+echo " Pterodactyl Nightcore Installer + Custom BG"
+echo "━━━━━━━━━━━━━━━━━━━━━━━"
+echo "[1] Install tema Nightcore + background kamu"
+echo "[2] Restore dari backup"
+echo "[3] Keluar"
+echo "━━━━━━━━━━━━━━━━━━━━━━━"
+read -p "Pilih opsi: " pilihan
+
+case $pilihan in
+    1) installTheme ;;
+    2) restoreBackup ;;
+    *) echo "Keluar." ;;
+esac
